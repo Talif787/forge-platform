@@ -52,14 +52,14 @@ func (m *memStore) Update(_ context.Context, s *domain.Service, expected int64) 
 
 func (m *memStore) FindByID(_ context.Context, id domain.ServiceID) (*domain.Service, error) {
 	if s, ok := m.byID[id.String()]; ok {
-		return s, nil
+		return cloneService(s), nil
 	}
 	return nil, domain.ErrServiceNotFound
 }
 
 func (m *memStore) FindByTenantAndName(_ context.Context, t domain.TenantID, n domain.ServiceName) (*domain.Service, error) {
 	if s, ok := m.byName[key(t, n)]; ok {
-		return s, nil
+		return cloneService(s), nil
 	}
 	return nil, domain.ErrServiceNotFound
 }
@@ -143,4 +143,8 @@ func TestChangeLifecycleFlow(t *testing.T) {
 	require.NoError(t, json.Unmarshal(patchRec.Body.Bytes(), &updated))
 	assert.Equal(t, "production", updated.Lifecycle)
 	assert.Equal(t, int64(2), updated.Version)
+}
+
+func cloneService(s *domain.Service) *domain.Service {
+	return domain.Reconstitute(s.ID(), s.TenantID(), s.Name(), s.Description(), s.Tier(), s.Lifecycle(), s.Repository(), s.Ownership(), s.Version(), s.CreatedAt(), s.UpdatedAt())
 }

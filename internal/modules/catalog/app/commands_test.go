@@ -46,14 +46,14 @@ func (f *fakeRepo) Update(_ context.Context, s *domain.Service, expectedVersion 
 
 func (f *fakeRepo) FindByID(_ context.Context, id domain.ServiceID) (*domain.Service, error) {
 	if s, ok := f.byID[id.String()]; ok {
-		return s, nil
+		return cloneService(s), nil
 	}
 	return nil, domain.ErrServiceNotFound
 }
 
 func (f *fakeRepo) FindByTenantAndName(_ context.Context, t domain.TenantID, n domain.ServiceName) (*domain.Service, error) {
 	if s, ok := f.byName[nameKey(t, n)]; ok {
-		return s, nil
+		return cloneService(s), nil
 	}
 	return nil, domain.ErrServiceNotFound
 }
@@ -149,4 +149,8 @@ func TestChangeOwnership_VersionConflict(t *testing.T) {
 		ExpectedVersion: 99,
 	})
 	require.ErrorIs(t, err, domain.ErrVersionConflict)
+}
+
+func cloneService(s *domain.Service) *domain.Service {
+	return domain.Reconstitute(s.ID(), s.TenantID(), s.Name(), s.Description(), s.Tier(), s.Lifecycle(), s.Repository(), s.Ownership(), s.Version(), s.CreatedAt(), s.UpdatedAt())
 }
