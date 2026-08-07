@@ -18,25 +18,25 @@ func (b base) OccurredAt() time.Time { return b.at }
 
 type ServiceRegistered struct {
 	base
-	TenantID string
-	Name     string
-	Tier     int
+	TenantID string `json:"tenantId"`
+	Name     string `json:"name"`
+	Tier     int    `json:"tier"`
 }
 
 func (ServiceRegistered) EventType() string { return "catalog.service.registered" }
 
 type ServiceOwnershipChanged struct {
 	base
-	PreviousTeam string
-	NewTeam      string
+	PreviousTeam string `json:"previousTeam"`
+	NewTeam      string `json:"newTeam"`
 }
 
 func (ServiceOwnershipChanged) EventType() string { return "catalog.service.ownership_changed" }
 
 type ServiceLifecycleChanged struct {
 	base
-	From string
-	To   string
+	From string `json:"from"`
+	To   string `json:"to"`
 }
 
 func (ServiceLifecycleChanged) EventType() string { return "catalog.service.lifecycle_changed" }
