@@ -36,6 +36,15 @@ claiming and message-id deduplication for safe at-least-once delivery. An
 example consumer logs the stream. See `docs/events.md`. Run it with
 `make relay` and `make consumer` alongside `make run`.
 
+## Phase 3: tenant module
+
+A second bounded context (tenants) built on the same clean-architecture pattern
+as Catalog: aggregate with a status lifecycle (active, suspended, archived) and
+a service quota, optimistic concurrency, keyset pagination, and a REST surface
+under `/api/v1/tenants`. Tenant events are written to the same `outbox_events`
+table, so the Phase 2 relay publishes them (`forge.events.tenant.*`) with no
+extra wiring. Quota enforcement across modules is deferred to a later phase.
+
 ## Quickstart
 
 ```bash

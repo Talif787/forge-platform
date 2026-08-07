@@ -31,7 +31,7 @@ test-unit:
 	$(GO) test -race -count=1 $(PKG)
 
 test-integration:
-	$(GO) test -race -count=1 -tags=integration ./internal/modules/catalog/adapters/postgres/... ./internal/relay/...
+	$(GO) test -race -count=1 -tags=integration ./internal/modules/catalog/adapters/postgres/... ./internal/modules/tenant/adapters/postgres/... ./internal/relay/...
 
 test: test-unit test-integration
 

@@ -15,6 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	catalog "github.com/forge-platform/forge/internal/modules/catalog"
+	tenant "github.com/forge-platform/forge/internal/modules/tenant"
 	"github.com/forge-platform/forge/internal/platform/config"
 	"github.com/forge-platform/forge/internal/platform/httpx"
 	"github.com/forge-platform/forge/internal/platform/idempotency"
@@ -83,6 +84,7 @@ func run() error {
 		r.Use(httpx.Authenticate(verifier))
 		r.Use(httpx.RateLimit(cfg.RateLimit.RPS, cfg.RateLimit.Burst))
 		catalog.New(pool.Pool, idemStore).Mount(r)
+		tenant.New(pool.Pool).Mount(r)
 	})
 
 	server := httpx.NewServer(cfg.HTTPAddr, router)

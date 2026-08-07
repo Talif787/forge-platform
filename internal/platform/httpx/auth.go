@@ -62,9 +62,9 @@ type JWKSVerifier struct {
 	client   *http.Client
 	ttl      time.Duration
 
-	mu       sync.RWMutex
-	keys     map[string]*rsa.PublicKey
-	fetched  time.Time
+	mu      sync.RWMutex
+	keys    map[string]*rsa.PublicKey
+	fetched time.Time
 }
 
 func NewJWKSVerifier(url, issuer, audience string) *JWKSVerifier {
