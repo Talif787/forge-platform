@@ -16,6 +16,19 @@ type Config struct {
 	Auth            Auth
 	Telemetry       Telemetry
 	RateLimit       RateLimit
+	Events          Events
+	Relay           Relay
+}
+
+type Events struct {
+	NATSURL       string
+	StreamName    string
+	SubjectPrefix string
+}
+
+type Relay struct {
+	BatchSize    int
+	PollInterval time.Duration
 }
 
 type Database struct {
@@ -72,6 +85,15 @@ func Load() (Config, error) {
 		RateLimit: RateLimit{
 			RPS:   getFloat("FORGE_RATE_LIMIT_RPS", 50),
 			Burst: getInt("FORGE_RATE_LIMIT_BURST", 100),
+		},
+		Events: Events{
+			NATSURL:       getStr("FORGE_NATS_URL", "nats://localhost:4222"),
+			StreamName:    getStr("FORGE_EVENTS_STREAM", "FORGE_EVENTS"),
+			SubjectPrefix: getStr("FORGE_EVENTS_SUBJECT_PREFIX", "forge.events"),
+		},
+		Relay: Relay{
+			BatchSize:    getInt("FORGE_RELAY_BATCH_SIZE", 100),
+			PollInterval: getDur("FORGE_RELAY_POLL_INTERVAL", time.Second),
 		},
 	}
 	if err := cfg.validate(); err != nil {

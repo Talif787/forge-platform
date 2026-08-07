@@ -15,6 +15,18 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  nats:
+    image: nats:2.10-alpine
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8222/healthz || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   api:
     build: .
     depends_on:
@@ -31,6 +43,43 @@ services:
       FORGE_RATE_LIMIT_BURST: "100"
     ports:
       - "8080:8080"
+
+  relay:
+    build: .
+    entrypoint: ["/relay"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment:
+      FORGE_ENV: development
+      FORGE_DB_URL: "postgres://forge:forge@postgres:5432/forge?sslmode=disable"
+      FORGE_NATS_URL: "nats://nats:4222"
+      FORGE_EVENTS_STREAM: "FORGE_EVENTS"
+      FORGE_EVENTS_SUBJECT_PREFIX: "forge.events"
+      FORGE_RELAY_BATCH_SIZE: "100"
+      FORGE_RELAY_POLL_INTERVAL: "1s"
+      # relay does not authenticate; dummy values satisfy shared config validation
+      FORGE_AUTH_MODE: "hmac"
+      FORGE_AUTH_HMAC_SECRET: "unused-by-relay"
+
+  consumer:
+    build: .
+    entrypoint: ["/consumer"]
+    depends_on:
+      nats:
+        condition: service_healthy
+    environment:
+      FORGE_ENV: development
+      FORGE_DB_URL: "postgres://forge:forge@postgres:5432/forge?sslmode=disable"
+      FORGE_NATS_URL: "nats://nats:4222"
+      FORGE_EVENTS_STREAM: "FORGE_EVENTS"
+      FORGE_EVENTS_SUBJECT_PREFIX: "forge.events"
+      FORGE_AUTH_MODE: "hmac"
+      FORGE_AUTH_HMAC_SECRET: "unused-by-consumer"
 
 volumes:
   pgdata: {}

@@ -6,9 +6,17 @@ MIGRATE_URL ?= $(DATABASE_URL)
 
 build:
 	$(GO) build -o bin/api ./cmd/api
+	$(GO) build -o bin/relay ./cmd/relay
+	$(GO) build -o bin/consumer ./cmd/consumer
 
 run:
 	$(GO) run ./cmd/api
+
+relay:
+	$(GO) run ./cmd/relay
+
+consumer:
+	$(GO) run ./cmd/consumer
 
 fmt:
 	$(GO) fmt $(PKG)
@@ -23,7 +31,7 @@ test-unit:
 	$(GO) test -race -count=1 $(PKG)
 
 test-integration:
-	$(GO) test -race -count=1 -tags=integration ./internal/modules/catalog/adapters/postgres/...
+	$(GO) test -race -count=1 -tags=integration ./internal/modules/catalog/adapters/postgres/... ./internal/relay/...
 
 test: test-unit test-integration
 

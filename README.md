@@ -28,6 +28,14 @@ Delivered here:
 - Postgres persistence with an embedded migration runner.
 - Unit, application, API, and testcontainers-backed integration tests.
 
+## Phase 2: event relay
+
+A separate relay process reads the `outbox_events` rows the Catalog module
+writes and publishes them to NATS JetStream, with `FOR UPDATE SKIP LOCKED`
+claiming and message-id deduplication for safe at-least-once delivery. An
+example consumer logs the stream. See `docs/events.md`. Run it with
+`make relay` and `make consumer` alongside `make run`.
+
 ## Quickstart
 
 ```bash

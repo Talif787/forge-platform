@@ -145,6 +145,8 @@ func TestChangeLifecycleFlow(t *testing.T) {
 	assert.Equal(t, int64(2), updated.Version)
 }
 
+// cloneService returns an independent copy so mutating a loaded aggregate does
+// not mutate the stored one, mirroring how a real database returns snapshots.
 func cloneService(s *domain.Service) *domain.Service {
 	return domain.Reconstitute(s.ID(), s.TenantID(), s.Name(), s.Description(), s.Tier(), s.Lifecycle(), s.Repository(), s.Ownership(), s.Version(), s.CreatedAt(), s.UpdatedAt())
 }

@@ -151,6 +151,8 @@ func TestChangeOwnership_VersionConflict(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrVersionConflict)
 }
 
+// cloneService returns an independent copy so mutating a loaded aggregate does
+// not mutate the stored one, mirroring how a real database returns snapshots.
 func cloneService(s *domain.Service) *domain.Service {
 	return domain.Reconstitute(s.ID(), s.TenantID(), s.Name(), s.Description(), s.Tier(), s.Lifecycle(), s.Repository(), s.Ownership(), s.Version(), s.CreatedAt(), s.UpdatedAt())
 }
