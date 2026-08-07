@@ -1,0 +1,214 @@
+openapi: 3.1.0
+info:
+  title: Forge Control Plane API - Catalog
+  version: 1.0.0
+  description: >
+    Service catalog endpoints of the Forge Internal Developer Platform control
+    plane. This specification covers the Catalog bounded context delivered in
+    Phase 1. All endpoints require a bearer token and are rate limited.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+paths:
+  /services:
+    post:
+      summary: Register a service
+      operationId: registerService
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterServiceRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location: { schema: { type: string }, description: URI of the created service }
+            ETag: { schema: { type: string }, description: Current aggregate version }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Service' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+    get:
+      summary: List services
+      operationId: listServices
+      parameters:
+        - { name: tenantId, in: query, schema: { type: string, format: uuid } }
+        - { name: lifecycle, in: query, schema: { $ref: '#/components/schemas/Lifecycle' } }
+        - { name: tier, in: query, schema: { type: integer, minimum: 1, maximum: 4 } }
+        - { name: sort, in: query, schema: { type: string, enum: [created_at, name], default: created_at } }
+        - { name: order, in: query, schema: { type: string, enum: [asc, desc], default: desc } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+        - { name: cursor, in: query, schema: { type: string }, description: Opaque keyset cursor from a prior response }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServicePage' }
+  /services/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Get a service
+      operationId: getService
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Service' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      summary: Retire a service
+      operationId: retireService
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Retired
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Service' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /services/{id}/ownership:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      - $ref: '#/components/parameters/IfMatch'
+    patch:
+      summary: Change ownership
+      operationId: changeOwnership
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangeOwnershipRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Service' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+  /services/{id}/lifecycle:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      - $ref: '#/components/parameters/IfMatch'
+    patch:
+      summary: Change lifecycle
+      operationId: changeLifecycle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangeLifecycleRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Service' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/PreconditionFailed' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string }
+      description: Retrying with the same key returns the original result without re-executing.
+    IfMatch:
+      name: If-Match
+      in: header
+      required: false
+      schema: { type: string }
+      description: Expected aggregate version for optimistic concurrency.
+  schemas:
+    Lifecycle:
+      type: string
+      enum: [experimental, production, deprecated, retired]
+    Ownership:
+      type: object
+      required: [owningTeam]
+      properties:
+        owningTeam: { type: string }
+        onCallRef: { type: string }
+    RegisterServiceRequest:
+      type: object
+      required: [tenantId, name, tier, owningTeam]
+      properties:
+        tenantId: { type: string, format: uuid }
+        name: { type: string, description: DNS-1123 label, 1 to 63 characters }
+        description: { type: string }
+        tier: { type: integer, minimum: 1, maximum: 4 }
+        repository: { type: string }
+        owningTeam: { type: string }
+        onCallRef: { type: string }
+    ChangeOwnershipRequest:
+      type: object
+      required: [owningTeam]
+      properties:
+        owningTeam: { type: string }
+        onCallRef: { type: string }
+    ChangeLifecycleRequest:
+      type: object
+      required: [lifecycle]
+      properties:
+        lifecycle: { $ref: '#/components/schemas/Lifecycle' }
+    Service:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        tenantId: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        tier: { type: integer }
+        lifecycle: { $ref: '#/components/schemas/Lifecycle' }
+        repository: { type: string }
+        ownership: { $ref: '#/components/schemas/Ownership' }
+        version: { type: integer, format: int64 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ServicePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Service' }
+        nextCursor: { type: string }
+    Error:
+      type: object
+      required: [code, message, correlationId]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        details: { type: array, items: { type: string } }
+        correlationId: { type: string }
+  responses:
+    NotFound:
+      description: Not found
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Conflict:
+      description: Conflict
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    ValidationError:
+      description: Validation failed
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    PreconditionFailed:
+      description: Precondition failed
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    RateLimited:
+      description: Too many requests
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }

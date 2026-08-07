@@ -1,0 +1,40 @@
+image: gitpod/workspace-full
+
+# Workspace-wide environment. These are read by the API at startup and by the
+# test suite. The HMAC secret is a local development value only; production uses
+# FORGE_AUTH_MODE=jwks against a real IdP.
+env:
+  FORGE_ENV: development
+  FORGE_HTTP_ADDR: ":8080"
+  FORGE_DB_URL: "postgres://forge:forge@localhost:5432/forge?sslmode=disable"
+  FORGE_AUTH_MODE: "hmac"
+  FORGE_AUTH_HMAC_SECRET: "local-development-secret-change-me"
+  FORGE_OTEL_SERVICE_NAME: "forge-control-plane"
+  FORGE_RATE_LIMIT_RPS: "50"
+  FORGE_RATE_LIMIT_BURST: "100"
+  # Fetch the Go 1.23 toolchain automatically if the base image ships an older Go.
+  GOTOOLCHAIN: "auto"
+  # Ephemeral workspaces do not need the testcontainers reaper; disabling it
+  # avoids a common hang when the reaper container cannot start.
+  TESTCONTAINERS_RYUK_DISABLED: "true"
+
+tasks:
+  - name: Forge Control Plane
+    # Runs once (and during prebuilds): resolve modules and compile everything.
+    init: |
+      go mod tidy
+      go build ./...
+    # Runs on every workspace start: bring up Postgres and wait for it.
+    command: |
+      docker compose up -d postgres
+      echo "Waiting for Postgres to accept connections..."
+      until docker compose exec -T postgres pg_isready -U forge >/dev/null 2>&1; do sleep 1; done
+      echo "Postgres is ready."
+      echo "Start the API with:  make run"
+
+ports:
+  - port: 8080
+    onOpen: notify
+    visibility: private
+  - port: 5432
+    onOpen: ignore

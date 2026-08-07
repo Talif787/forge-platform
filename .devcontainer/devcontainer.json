@@ -1,0 +1,26 @@
+{
+  "name": "Forge Control Plane",
+  "image": "mcr.microsoft.com/devcontainers/go:1.23",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "containerEnv": {
+    "FORGE_ENV": "development",
+    "FORGE_HTTP_ADDR": ":8080",
+    "FORGE_DB_URL": "postgres://forge:forge@localhost:5432/forge?sslmode=disable",
+    "FORGE_AUTH_MODE": "hmac",
+    "FORGE_AUTH_HMAC_SECRET": "local-development-secret-change-me",
+    "FORGE_OTEL_SERVICE_NAME": "forge-control-plane",
+    "FORGE_RATE_LIMIT_RPS": "50",
+    "FORGE_RATE_LIMIT_BURST": "100",
+    "GOTOOLCHAIN": "auto",
+    "TESTCONTAINERS_RYUK_DISABLED": "true"
+  },
+  "forwardPorts": [8080],
+  "postCreateCommand": "go mod tidy && go build ./...",
+  "customizations": {
+    "vscode": {
+      "extensions": ["golang.go"]
+    }
+  }
+}
