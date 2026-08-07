@@ -28,7 +28,7 @@ func setup(t *testing.T) (*pgxpool.Pool, func()) {
 		tcpostgres.WithDatabase("forge"),
 		tcpostgres.WithUsername("forge"),
 		tcpostgres.WithPassword("forge"),
-		testcontainers.WithWaitStrategy(wait.ForListeningPort("5432/tcp").WithStartupTimeout(60*time.Second)),
+		testcontainers.WithWaitStrategy(wait.ForLog("database system is ready to accept connections").WithOccurrence(2).WithStartupTimeout(60*time.Second)),
 	)
 	require.NoError(t, err)
 
