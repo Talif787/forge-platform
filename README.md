@@ -54,6 +54,15 @@ requests/limits, probes, a non-root security context, and standard labels, then
 reconciling continuously to correct drift. See `docs/reconciler.md`. Run it on a
 local `kind` cluster with `make kind-up install-crd operator sample`.
 
+## Phase 5: provisioning workflows
+
+Durable tenant provisioning as a Temporal workflow using the saga pattern: each
+step (namespace, quota, DNS, secret path) registers a compensating action, and a
+later failure rolls the completed steps back in reverse, giving multi-system
+provisioning atomic-like semantics without a distributed transaction. External
+systems are behind a Provisioner interface with a simulated implementation, so it
+runs and tests without cloud credentials. See `docs/provisioning.md`.
+
 ## Quickstart
 
 ```bash

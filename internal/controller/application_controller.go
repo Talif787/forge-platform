@@ -94,11 +94,11 @@ func (r *ApplicationReconciler) mutateDeployment(app *platformv1alpha1.Applicati
 		Spec: corev1.PodSpec{
 			SecurityContext: &corev1.PodSecurityContext{RunAsNonRoot: boolPtr(true)},
 			Containers: []corev1.Container{{
-				Name:           "app",
-				Image:          app.Spec.Image,
-				Ports:          []corev1.ContainerPort{{ContainerPort: app.Spec.Port}},
-				Env:            toEnvVars(app.Spec.Env),
-				Resources:      resourceRequirements(app),
+				Name:  "app",
+				Image: app.Spec.Image,
+				Ports: []corev1.ContainerPort{{ContainerPort: app.Spec.Port}},
+				Env:   toEnvVars(app.Spec.Env),
+				Resources: resourceRequirements(app),
 				LivenessProbe:  tcpProbe(app.Spec.Port, 15),
 				ReadinessProbe: tcpProbe(app.Spec.Port, 5),
 				SecurityContext: &corev1.SecurityContext{

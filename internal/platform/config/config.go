@@ -18,6 +18,13 @@ type Config struct {
 	RateLimit       RateLimit
 	Events          Events
 	Relay           Relay
+	Temporal        Temporal
+}
+
+type Temporal struct {
+	HostPort  string
+	Namespace string
+	TaskQueue string
 }
 
 type Events struct {
@@ -94,6 +101,11 @@ func Load() (Config, error) {
 		Relay: Relay{
 			BatchSize:    getInt("FORGE_RELAY_BATCH_SIZE", 100),
 			PollInterval: getDur("FORGE_RELAY_POLL_INTERVAL", time.Second),
+		},
+		Temporal: Temporal{
+			HostPort:  getStr("FORGE_TEMPORAL_HOSTPORT", "localhost:7233"),
+			Namespace: getStr("FORGE_TEMPORAL_NAMESPACE", "default"),
+			TaskQueue: getStr("FORGE_TEMPORAL_TASK_QUEUE", "forge-provisioning"),
 		},
 	}
 	if err := cfg.validate(); err != nil {

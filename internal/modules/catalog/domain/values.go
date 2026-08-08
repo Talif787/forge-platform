@@ -30,8 +30,8 @@ func NewTier(t int) (Tier, error) {
 	return Tier{v: t}, nil
 }
 
-func (t Tier) Int() int         { return t.v }
-func (t Tier) IsCritical() bool { return t.v <= 2 }
+func (t Tier) Int() int          { return t.v }
+func (t Tier) IsCritical() bool  { return t.v <= 2 }
 
 type Lifecycle string
 
