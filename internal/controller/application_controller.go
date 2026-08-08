@@ -69,7 +69,72 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 	}
 
+	obs := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: app.Name + "-observability", Namespace: app.Namespace}}
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, obs, func() error {
+		r.mutateObservability(&app, obs)
+		return ctrl.SetControllerReference(&app, obs, r.Scheme)
+	}); err != nil {
+		return ctrl.Result{}, fmt.Errorf("reconcile observability: %w", err)
+	}
+
 	return ctrl.Result{}, r.updateStatus(ctx, &app, dep)
+}
+
+// mutateObservability generates a Grafana dashboard and Prometheus alert rules
+// for the application, delivered as a ConfigMap the respective sidecars pick up.
+// Every managed service gets metrics discovery (via pod annotations), a
+// dashboard, and alerts automatically, with no work from the developer.
+func (r *ApplicationReconciler) mutateObservability(app *platformv1alpha1.Application, cm *corev1.ConfigMap) {
+	cm.Labels = map[string]string{
+		"app.kubernetes.io/managed-by": "forge",
+		"forge.dev/application":        app.Name,
+		"grafana_dashboard":            "1",
+		"forge.dev/prometheus-rules":   "true",
+	}
+	cm.Data = map[string]string{
+		"dashboard.json": dashboardJSON(app),
+		"alerts.yaml":    alertRules(app),
+	}
+}
+
+func dashboardJSON(app *platformv1alpha1.Application) string {
+	return fmt.Sprintf(`{
+  "title": "Forge / %[1]s",
+  "uid": "forge-%[1]s",
+  "tags": ["forge", "managed"],
+  "panels": [
+    {"title": "Request rate", "type": "timeseries", "targets": [{"expr": "sum(rate(http_requests_total{app=\"%[1]s\"}[5m]))"}]},
+    {"title": "p95 latency", "type": "timeseries", "targets": [{"expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{app=\"%[1]s\"}[5m])) by (le))"}]},
+    {"title": "Ready replicas", "type": "stat", "targets": [{"expr": "kube_deployment_status_replicas_ready{deployment=\"%[1]s\"}"}]}
+  ]
+}`, app.Name)
+}
+
+func alertRules(app *platformv1alpha1.Application) string {
+	desired := app.Spec.Replicas
+	if desired == 0 {
+		desired = 1
+	}
+	return fmt.Sprintf(`groups:
+  - name: forge-%[1]s
+    rules:
+      - alert: HighErrorRate
+        expr: sum(rate(http_requests_total{app="%[1]s",status=~"5.."}[5m])) / sum(rate(http_requests_total{app="%[1]s"}[5m])) > 0.05
+        for: 10m
+        labels:
+          severity: page
+          forge_application: %[1]s
+        annotations:
+          summary: "High 5xx error rate for %[1]s"
+      - alert: InsufficientReplicas
+        expr: kube_deployment_status_replicas_ready{deployment="%[1]s"} < %[2]d
+        for: 15m
+        labels:
+          severity: page
+          forge_application: %[1]s
+        annotations:
+          summary: "%[1]s has fewer ready replicas than desired"
+`, app.Name, desired)
 }
 
 func (r *ApplicationReconciler) mutateDeployment(app *platformv1alpha1.Application, dep *appsv1.Deployment) {

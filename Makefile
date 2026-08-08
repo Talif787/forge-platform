@@ -83,3 +83,10 @@ provision:
 
 temporal-dev:
 	temporal server start-dev
+
+# --- Phase 6: policy and observability ---
+kyverno-install:
+	kubectl create -f https://github.com/kyverno/kyverno/releases/latest/download/install.yaml
+
+install-policy:
+	kubectl apply -f config/policy/

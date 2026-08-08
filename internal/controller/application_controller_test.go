@@ -55,7 +55,7 @@ func TestReconcileCreatesDeploymentAndService(t *testing.T) {
 func TestReconcileInjectsTierDefaults(t *testing.T) {
 	ctx := context.Background()
 	name := createApp(t, platformv1alpha1.ApplicationSpec{
-		Image: "ghcr.io/acme/critical:1.0", Port: 9090, Replicas: 1, Tier: 1,
+		Image: "ghcr.io/acme/critical:1.0", Port: 9090, Replicas: 2, Tier: 1,
 	})
 	reconcile(t, name)
 
@@ -140,4 +140,44 @@ func TestReconcileReadOnlyRootOptOut(t *testing.T) {
 	// Other hardening must remain in force.
 	assert.True(t, *sc.RunAsNonRoot)
 	assert.False(t, *sc.AllowPrivilegeEscalation)
+}
+
+func TestAdmissionRejectsLatestTag(t *testing.T) {
+	err := tryCreate(platformv1alpha1.ApplicationSpec{
+		Image: "nginx:latest", Port: 8080, Replicas: 1, Tier: 3,
+	})
+	require.Error(t, err, "the API server must reject a :latest image via CEL")
+	assert.Contains(t, err.Error(), "latest")
+}
+
+func TestAdmissionRejectsTier1SingleReplica(t *testing.T) {
+	err := tryCreate(platformv1alpha1.ApplicationSpec{
+		Image: "nginx:1.27", Port: 8080, Replicas: 1, Tier: 1,
+	})
+	require.Error(t, err, "tier 1 with a single replica must be rejected")
+	assert.Contains(t, err.Error(), "replicas")
+}
+
+func TestAdmissionAcceptsValid(t *testing.T) {
+	err := tryCreate(platformv1alpha1.ApplicationSpec{
+		Image: "nginx:1.27", Port: 8080, Replicas: 2, Tier: 1,
+	})
+	require.NoError(t, err)
+}
+
+func TestReconcileCreatesObservabilityConfigMap(t *testing.T) {
+	ctx := context.Background()
+	name := createApp(t, platformv1alpha1.ApplicationSpec{
+		Image: "img:1", Port: 8080, Replicas: 1, Tier: 3,
+	})
+	reconcile(t, name)
+
+	var cm corev1.ConfigMap
+	require.NoError(t, k8s.Get(ctx, key(name+"-observability"), &cm))
+	assert.Contains(t, cm.Data, "dashboard.json")
+	assert.Contains(t, cm.Data, "alerts.yaml")
+	assert.Contains(t, cm.Data["dashboard.json"], name, "dashboard should reference the app")
+	assert.Equal(t, "1", cm.Labels["grafana_dashboard"])
+	require.Len(t, cm.OwnerReferences, 1)
+	assert.Equal(t, "Application", cm.OwnerReferences[0].Kind)
 }

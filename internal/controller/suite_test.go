@@ -81,3 +81,13 @@ func reconcile(t *testing.T, name string) {
 func key(name string) types.NamespacedName {
 	return types.NamespacedName{Name: name, Namespace: "default"}
 }
+
+// tryCreate attempts to create an Application and returns the API server error
+// (if any), used to assert admission-time policy rejection.
+func tryCreate(spec platformv1alpha1.ApplicationSpec) error {
+	app := &platformv1alpha1.Application{
+		ObjectMeta: metav1.ObjectMeta{Name: uniqueName(), Namespace: "default"},
+		Spec:       spec,
+	}
+	return k8s.Create(context.Background(), app)
+}

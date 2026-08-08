@@ -63,6 +63,15 @@ provisioning atomic-like semantics without a distributed transaction. External
 systems are behind a Provisioner interface with a simulated implementation, so it
 runs and tests without cloud credentials. See `docs/provisioning.md`.
 
+## Phase 6: policy and observability injection
+
+Admission policy in two layers: CEL validation rules on the Application CRD
+(enforced by the API server, no webhook) that reject untagged/`:latest` images
+and under-replicated tier 1 apps, plus Kyverno ClusterPolicies as a cluster-wide
+guardrail. The controller also injects observability for every managed service:
+a Grafana dashboard and Prometheus alert rules delivered as a per-application
+ConfigMap. See `docs/policy.md`.
+
 ## Quickstart
 
 ```bash

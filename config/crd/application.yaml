@@ -30,6 +30,11 @@ spec:
             spec:
               type: object
               required: [image, port]
+              x-kubernetes-validations:
+                - rule: "self.image.contains(':') && !self.image.endsWith(':latest')"
+                  message: "image must specify an explicit tag other than ':latest'"
+                - rule: "self.tier != 1 || self.replicas >= 2"
+                  message: "tier 1 applications must run at least 2 replicas for redundancy"
               properties:
                 image:
                   type: string
