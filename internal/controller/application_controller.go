@@ -94,17 +94,17 @@ func (r *ApplicationReconciler) mutateDeployment(app *platformv1alpha1.Applicati
 		Spec: corev1.PodSpec{
 			SecurityContext: &corev1.PodSecurityContext{RunAsNonRoot: boolPtr(true)},
 			Containers: []corev1.Container{{
-				Name:  "app",
-				Image: app.Spec.Image,
-				Ports: []corev1.ContainerPort{{ContainerPort: app.Spec.Port}},
-				Env:   toEnvVars(app.Spec.Env),
-				Resources: resourceRequirements(app),
+				Name:           "app",
+				Image:          app.Spec.Image,
+				Ports:          []corev1.ContainerPort{{ContainerPort: app.Spec.Port}},
+				Env:            toEnvVars(app.Spec.Env),
+				Resources:      resourceRequirements(app),
 				LivenessProbe:  tcpProbe(app.Spec.Port, 15),
 				ReadinessProbe: tcpProbe(app.Spec.Port, 5),
 				SecurityContext: &corev1.SecurityContext{
 					RunAsNonRoot:             boolPtr(true),
 					AllowPrivilegeEscalation: boolPtr(false),
-					ReadOnlyRootFilesystem:   boolPtr(true),
+					ReadOnlyRootFilesystem:   boolPtr(readOnlyRoot(app)),
 					Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
 				},
 			}},
@@ -173,6 +173,15 @@ func effectiveTier(app *platformv1alpha1.Application) int32 {
 		return app.Spec.Tier
 	}
 	return 3
+}
+
+// readOnlyRoot enforces a read-only root filesystem unless the application
+// explicitly opts out. Omitting the security block yields the strict default.
+func readOnlyRoot(app *platformv1alpha1.Application) bool {
+	if app.Spec.Security.ReadOnlyRootFilesystem != nil {
+		return *app.Spec.Security.ReadOnlyRootFilesystem
+	}
+	return true
 }
 
 func resourceRequirements(app *platformv1alpha1.Application) corev1.ResourceRequirements {

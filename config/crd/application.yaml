@@ -62,6 +62,12 @@ spec:
                   properties:
                     cpu: {type: string}
                     memory: {type: string}
+                security:
+                  type: object
+                  properties:
+                    readOnlyRootFilesystem:
+                      type: boolean
+                      default: true
             status:
               type: object
               properties:

@@ -4,11 +4,13 @@ metadata:
   name: hello
   namespace: default
 spec:
-  image: nginxdemos/hello:plain-text
-  port: 80
+  image: nginxinc/nginx-unprivileged:stable
+  port: 8080
   replicas: 2
   tier: 3
   expose: true
-  env:
-    - name: GREETING
-      value: hello-from-forge
+  # nginx writes temp dirs at startup, so this image opts out of the read-only
+  # root filesystem. All other hardening defaults (non-root, no privilege
+  # escalation, dropped capabilities) still apply.
+  security:
+    readOnlyRootFilesystem: false

@@ -71,4 +71,5 @@ setup-envtest:
 	$$(go env GOPATH)/bin/setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(HOME)/.envtest -p path
 
 test-controller:
-	KUBEBUILDER_ASSETS="$$($(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(HOME)/.envtest -p path)" $(GO) test -tags=envtest -race -count=1 ./internal/controller/...
+	KUBEBUILDER_ASSETS="$$($$(go env GOPATH)/bin/setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(HOME)/.envtest -p path)" \
+		$(GO) test -tags=envtest -race -count=1 ./internal/controller/...

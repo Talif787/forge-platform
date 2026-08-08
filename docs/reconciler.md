@@ -37,6 +37,19 @@ For every Application, the reconciler produces a Deployment (and a Service when
   read-only root filesystem, all capabilities dropped).
 - Standard labels and Prometheus scrape annotations.
 
+Hardening is strict by default and opt-out per application. Omitting the
+`security` block yields the full hardening above. An image that must write to
+its filesystem can opt out of just the read-only root while keeping every other
+control:
+
+```yaml
+spec:
+  image: nginxinc/nginx-unprivileged:stable
+  port: 8080
+  security:
+    readOnlyRootFilesystem: false
+```
+
 The Deployment and Service are owned by the Application (owner references), so
 deleting the Application garbage-collects them. The controller reconciles
 continuously: delete the Deployment by hand and it is recreated, because desired

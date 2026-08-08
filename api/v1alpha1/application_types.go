@@ -23,6 +23,19 @@ type ApplicationSpec struct {
 	Resources ResourceRequests `json:"resources,omitempty"`
 	// Expose, when true, creates a ClusterIP Service in front of the pods.
 	Expose bool `json:"expose,omitempty"`
+	// Security lets an application opt out of specific hardening defaults when
+	// its workload genuinely requires it. Defaults remain strict.
+	Security SecuritySettings `json:"security,omitempty"`
+}
+
+// SecuritySettings carries opt-outs from the platform's default hardening. Every
+// field defaults to the secure value, so omitting this block yields a fully
+// hardened workload.
+type SecuritySettings struct {
+	// ReadOnlyRootFilesystem defaults to true. Set to false only for images that
+	// must write to the container filesystem at runtime (for example, servers
+	// that create temp directories on startup).
+	ReadOnlyRootFilesystem *bool `json:"readOnlyRootFilesystem,omitempty"`
 }
 
 type EnvVar struct {
@@ -43,8 +56,8 @@ type ApplicationStatus struct {
 	Conditions         []metav1.Condition `json:"conditions,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 type Application struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -53,7 +66,7 @@ type Application struct {
 	Status ApplicationStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 type ApplicationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

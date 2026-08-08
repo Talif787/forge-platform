@@ -1,0 +1,11 @@
+apiVersion: platform.forge.dev/v1alpha1
+kind: Application
+metadata:
+  name: hello
+  namespace: default
+spec:
+  image: nginxinc/nginx-unprivileged:stable
+  port: 8080
+  replicas: 2
+  tier: 3
+  expose: true

@@ -108,3 +108,36 @@ func TestReconcileUpdatesStatus(t *testing.T) {
 	require.NotEmpty(t, got.Status.Conditions)
 	assert.Equal(t, "Available", got.Status.Conditions[0].Type)
 }
+
+func TestReconcileReadOnlyRootDefaultsTrue(t *testing.T) {
+	ctx := context.Background()
+	name := createApp(t, platformv1alpha1.ApplicationSpec{
+		Image: "img:1", Port: 8080, Replicas: 1, Tier: 3,
+	})
+	reconcile(t, name)
+
+	var dep appsv1.Deployment
+	require.NoError(t, k8s.Get(ctx, key(name), &dep))
+	sc := dep.Spec.Template.Spec.Containers[0].SecurityContext
+	require.NotNil(t, sc.ReadOnlyRootFilesystem)
+	assert.True(t, *sc.ReadOnlyRootFilesystem, "read-only root must be the strict default")
+}
+
+func TestReconcileReadOnlyRootOptOut(t *testing.T) {
+	ctx := context.Background()
+	optOut := false
+	name := createApp(t, platformv1alpha1.ApplicationSpec{
+		Image: "img:1", Port: 8080, Replicas: 1, Tier: 3,
+		Security: platformv1alpha1.SecuritySettings{ReadOnlyRootFilesystem: &optOut},
+	})
+	reconcile(t, name)
+
+	var dep appsv1.Deployment
+	require.NoError(t, k8s.Get(ctx, key(name), &dep))
+	sc := dep.Spec.Template.Spec.Containers[0].SecurityContext
+	require.NotNil(t, sc.ReadOnlyRootFilesystem)
+	assert.False(t, *sc.ReadOnlyRootFilesystem, "explicit opt-out must be honored")
+	// Other hardening must remain in force.
+	assert.True(t, *sc.RunAsNonRoot)
+	assert.False(t, *sc.AllowPrivilegeEscalation)
+}

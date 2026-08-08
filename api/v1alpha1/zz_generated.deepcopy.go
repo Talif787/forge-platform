@@ -68,6 +68,24 @@ func (in *ApplicationSpec) DeepCopyInto(out *ApplicationSpec) {
 		copy(out.Env, in.Env)
 	}
 	out.Resources = in.Resources
+	in.Security.DeepCopyInto(&out.Security)
+}
+
+func (in *SecuritySettings) DeepCopyInto(out *SecuritySettings) {
+	*out = *in
+	if in.ReadOnlyRootFilesystem != nil {
+		out.ReadOnlyRootFilesystem = new(bool)
+		*out.ReadOnlyRootFilesystem = *in.ReadOnlyRootFilesystem
+	}
+}
+
+func (in *SecuritySettings) DeepCopy() *SecuritySettings {
+	if in == nil {
+		return nil
+	}
+	out := new(SecuritySettings)
+	in.DeepCopyInto(out)
+	return out
 }
 
 func (in *ApplicationSpec) DeepCopy() *ApplicationSpec {
