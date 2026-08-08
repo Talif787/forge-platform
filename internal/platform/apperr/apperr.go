@@ -17,6 +17,7 @@ const (
 	KindForbidden
 	KindPreconditionFailed
 	KindTooManyRequests
+	KindUnavailable
 )
 
 type Error struct {
@@ -60,6 +61,7 @@ func TooManyRequests(code, message string) *Error {
 	return New(KindTooManyRequests, code, message)
 }
 func Internal(code, message string) *Error { return New(KindInternal, code, message) }
+func Unavailable(code, message string) *Error { return New(KindUnavailable, code, message) }
 
 func HTTPStatus(err error) int {
 	var e *Error
@@ -81,6 +83,8 @@ func HTTPStatus(err error) int {
 		return http.StatusPreconditionFailed
 	case KindTooManyRequests:
 		return http.StatusTooManyRequests
+	case KindUnavailable:
+		return http.StatusServiceUnavailable
 	default:
 		return http.StatusInternalServerError
 	}

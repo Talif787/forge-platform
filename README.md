@@ -72,6 +72,14 @@ guardrail. The controller also injects observability for every managed service:
 a Grafana dashboard and Prometheus alert rules delivered as a per-application
 ConfigMap. See `docs/policy.md`.
 
+## Phase 7: applications read API
+
+Projects the reconciler's Application custom resources into the control-plane
+REST API (`GET /api/v1/applications`), so a UI can show each app's declared
+intent and live reconcile status (phase, ready replicas, conditions). Read-only,
+and optional: without a configured cluster the endpoints return 503 and the rest
+of the API is unaffected. See `docs/applications.md`.
+
 ## Quickstart
 
 ```bash

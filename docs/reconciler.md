@@ -81,3 +81,13 @@ controller creates). They are gated behind the `envtest` build tag.
 make setup-envtest    # downloads the kube-apiserver/etcd test binaries once
 make test-controller
 ```
+
+## Reconcile idempotency
+
+Owned objects are written with Kubernetes server-side apply (a stable field
+owner), not read-modify-write. The operator authoritatively manages only the
+fields it sets and leaves server-defaulted fields alone, so an unchanged
+Application reconciles to a no-op (no resourceVersion churn, no self-triggered
+requeues). The Application status is updated under a conflict retry and only when
+it actually changes. A test asserts a second reconcile does not rewrite the
+Deployment.

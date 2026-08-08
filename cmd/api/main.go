@@ -16,9 +16,12 @@ import (
 
 	catalog "github.com/forge-platform/forge/internal/modules/catalog"
 	tenant "github.com/forge-platform/forge/internal/modules/tenant"
+	application "github.com/forge-platform/forge/internal/modules/application"
+	appkube "github.com/forge-platform/forge/internal/modules/application/adapters/kube"
 	"github.com/forge-platform/forge/internal/platform/config"
 	"github.com/forge-platform/forge/internal/platform/httpx"
 	"github.com/forge-platform/forge/internal/platform/idempotency"
+	platformkube "github.com/forge-platform/forge/internal/platform/kube"
 	"github.com/forge-platform/forge/internal/platform/log"
 	"github.com/forge-platform/forge/internal/platform/observability"
 	pg "github.com/forge-platform/forge/internal/platform/postgres"
@@ -80,11 +83,22 @@ func run() error {
 	router.Get("/readyz", httpx.Readiness(func(ctx context.Context) error { return pool.Health(ctx) }))
 	router.Method(http.MethodGet, "/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 
+	kubeClient, kubeErr := platformkube.BuildClient()
+	var appModule *application.Module
+	if kubeErr != nil {
+		logger.Warn("kubernetes not configured; applications endpoints will return 503", "error", kubeErr.Error())
+		appModule = application.NewDisabled()
+	} else {
+		logger.Info("kubernetes configured; applications endpoints enabled")
+		appModule = application.New(appkube.NewReader(kubeClient))
+	}
+
 	router.Route("/api/v1", func(r chi.Router) {
 		r.Use(httpx.Authenticate(verifier))
 		r.Use(httpx.RateLimit(cfg.RateLimit.RPS, cfg.RateLimit.Burst))
 		catalog.New(pool.Pool, idemStore).Mount(r)
 		tenant.New(pool.Pool).Mount(r)
+		appModule.Mount(r)
 	})
 
 	server := httpx.NewServer(cfg.HTTPAddr, router)

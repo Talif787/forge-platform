@@ -181,3 +181,23 @@ func TestReconcileCreatesObservabilityConfigMap(t *testing.T) {
 	require.Len(t, cm.OwnerReferences, 1)
 	assert.Equal(t, "Application", cm.OwnerReferences[0].Kind)
 }
+
+func TestReconcileIsIdempotent(t *testing.T) {
+	ctx := context.Background()
+	name := createApp(t, platformv1alpha1.ApplicationSpec{
+		Image: "img:1", Port: 8080, Replicas: 1, Tier: 3,
+	})
+	reconcile(t, name)
+
+	var first appsv1.Deployment
+	require.NoError(t, k8s.Get(ctx, key(name), &first))
+	rv := first.ResourceVersion
+
+	// A second reconcile of an unchanged Application must not rewrite the
+	// Deployment: server-side apply is idempotent, so the resourceVersion is
+	// stable. This is what stops the reconcile churn.
+	reconcile(t, name)
+	var second appsv1.Deployment
+	require.NoError(t, k8s.Get(ctx, key(name), &second))
+	assert.Equal(t, rv, second.ResourceVersion, "a no-op reconcile must not churn the deployment")
+}
