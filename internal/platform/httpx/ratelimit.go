@@ -13,11 +13,11 @@ import (
 // keyedLimiter holds a token-bucket limiter per identity. It is in-process for
 // Phase 1; a Redis-backed limiter replaces it for multi-instance enforcement.
 type keyedLimiter struct {
-	mu      sync.Mutex
-	buckets map[string]*entry
-	rps     rate.Limit
-	burst   int
-	ttl     time.Duration
+	mu       sync.Mutex
+	buckets  map[string]*entry
+	rps      rate.Limit
+	burst    int
+	ttl      time.Duration
 }
 
 type entry struct {

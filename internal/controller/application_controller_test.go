@@ -1,0 +1,110 @@
+//go:build envtest
+
+package controller
+
+import (
+	"context"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
+	platformv1alpha1 "github.com/forge-platform/forge/api/v1alpha1"
+)
+
+func TestReconcileCreatesDeploymentAndService(t *testing.T) {
+	ctx := context.Background()
+	name := createApp(t, platformv1alpha1.ApplicationSpec{
+		Image: "ghcr.io/acme/payments:1.0", Port: 8080, Replicas: 3, Tier: 2, Expose: true,
+		Env: []platformv1alpha1.EnvVar{{Name: "LOG_LEVEL", Value: "info"}},
+	})
+	reconcile(t, name)
+
+	var dep appsv1.Deployment
+	require.NoError(t, k8s.Get(ctx, key(name), &dep))
+	assert.Equal(t, int32(3), *dep.Spec.Replicas)
+
+	c := dep.Spec.Template.Spec.Containers[0]
+	assert.Equal(t, "ghcr.io/acme/payments:1.0", c.Image)
+	assert.Equal(t, int32(8080), c.Ports[0].ContainerPort)
+	require.Len(t, c.Env, 1)
+	assert.Equal(t, "LOG_LEVEL", c.Env[0].Name)
+
+	// Platform-injected standards the developer never wrote.
+	require.NotNil(t, c.LivenessProbe)
+	require.NotNil(t, c.ReadinessProbe)
+	assert.False(t, c.Resources.Requests.Cpu().IsZero(), "requests must be set")
+	assert.False(t, c.Resources.Limits.Cpu().IsZero(), "limits must be enforced")
+	require.NotNil(t, c.SecurityContext)
+	require.NotNil(t, c.SecurityContext.RunAsNonRoot)
+	assert.True(t, *c.SecurityContext.RunAsNonRoot)
+
+	// Owned by the Application for garbage collection.
+	require.Len(t, dep.OwnerReferences, 1)
+	assert.Equal(t, "Application", dep.OwnerReferences[0].Kind)
+	assert.Equal(t, name, dep.OwnerReferences[0].Name)
+
+	var svc corev1.Service
+	require.NoError(t, k8s.Get(ctx, key(name), &svc))
+	assert.Equal(t, int32(8080), svc.Spec.Ports[0].Port)
+}
+
+func TestReconcileInjectsTierDefaults(t *testing.T) {
+	ctx := context.Background()
+	name := createApp(t, platformv1alpha1.ApplicationSpec{
+		Image: "ghcr.io/acme/critical:1.0", Port: 9090, Replicas: 1, Tier: 1,
+	})
+	reconcile(t, name)
+
+	var dep appsv1.Deployment
+	require.NoError(t, k8s.Get(ctx, key(name), &dep))
+	c := dep.Spec.Template.Spec.Containers[0]
+	assert.Equal(t, "1", c.Resources.Requests.Cpu().String())
+	assert.Equal(t, "1Gi", c.Resources.Requests.Memory().String())
+}
+
+func TestReconcileCorrectsDrift(t *testing.T) {
+	ctx := context.Background()
+	name := createApp(t, platformv1alpha1.ApplicationSpec{
+		Image: "img:1", Port: 8080, Replicas: 1, Tier: 3,
+	})
+	reconcile(t, name)
+
+	var dep appsv1.Deployment
+	require.NoError(t, k8s.Get(ctx, key(name), &dep))
+	require.NoError(t, k8s.Delete(ctx, &dep))
+
+	reconcile(t, name)
+	var recreated appsv1.Deployment
+	require.NoError(t, k8s.Get(ctx, key(name), &recreated), "controller must recreate a deleted deployment")
+}
+
+func TestReconcileNoServiceWhenNotExposed(t *testing.T) {
+	ctx := context.Background()
+	name := createApp(t, platformv1alpha1.ApplicationSpec{
+		Image: "img:1", Port: 8080, Replicas: 1, Tier: 3, Expose: false,
+	})
+	reconcile(t, name)
+
+	var svc corev1.Service
+	err := k8s.Get(ctx, key(name), &svc)
+	assert.True(t, apierrors.IsNotFound(err), "no service should exist when expose is false")
+}
+
+func TestReconcileUpdatesStatus(t *testing.T) {
+	ctx := context.Background()
+	name := createApp(t, platformv1alpha1.ApplicationSpec{
+		Image: "img:1", Port: 8080, Replicas: 2, Tier: 3,
+	})
+	reconcile(t, name)
+
+	var got platformv1alpha1.Application
+	require.NoError(t, k8s.Get(ctx, key(name), &got))
+	assert.Equal(t, got.Generation, got.Status.ObservedGeneration)
+	assert.NotEmpty(t, got.Status.Phase)
+	require.NotEmpty(t, got.Status.Conditions)
+	assert.Equal(t, "Available", got.Status.Conditions[0].Type)
+}

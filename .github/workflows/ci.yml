@@ -36,3 +36,18 @@ jobs:
         env:
           TESTCONTAINERS_RYUK_DISABLED: "true"
         run: go test -race -count=1 -tags=integration ./internal/modules/catalog/adapters/postgres/... ./internal/modules/tenant/adapters/postgres/... ./internal/relay/...
+
+  controller-envtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+      - name: Install setup-envtest
+        run: go install sigs.k8s.io/controller-runtime/tools/setup-envtest@release-0.19
+      - name: Run controller tests (envtest)
+        run: |
+          export KUBEBUILDER_ASSETS="$(setup-envtest use 1.31.0 -p path)"
+          go test -tags=envtest -race -count=1 ./internal/controller/...

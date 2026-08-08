@@ -71,12 +71,12 @@ func (t *Tenant) PullEvents() []Event {
 	return events
 }
 
-func (t *Tenant) ID() TenantID         { return t.id }
-func (t *Tenant) Name() TenantName     { return t.name }
-func (t *Tenant) Slug() Slug           { return t.slug }
-func (t *Tenant) Plan() Plan           { return t.plan }
-func (t *Tenant) Status() Status       { return t.status }
-func (t *Tenant) Quota() Quota         { return t.quota }
-func (t *Tenant) Version() int64       { return t.version }
+func (t *Tenant) ID() TenantID       { return t.id }
+func (t *Tenant) Name() TenantName   { return t.name }
+func (t *Tenant) Slug() Slug         { return t.slug }
+func (t *Tenant) Plan() Plan         { return t.plan }
+func (t *Tenant) Status() Status     { return t.status }
+func (t *Tenant) Quota() Quota       { return t.quota }
+func (t *Tenant) Version() int64     { return t.version }
 func (t *Tenant) CreatedAt() time.Time { return t.createdAt }
 func (t *Tenant) UpdatedAt() time.Time { return t.updatedAt }

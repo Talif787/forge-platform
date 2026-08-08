@@ -1,0 +1,14 @@
+apiVersion: platform.forge.dev/v1alpha1
+kind: Application
+metadata:
+  name: hello
+  namespace: default
+spec:
+  image: nginxdemos/hello:plain-text
+  port: 80
+  replicas: 2
+  tier: 3
+  expose: true
+  env:
+    - name: GREETING
+      value: hello-from-forge

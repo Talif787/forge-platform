@@ -45,6 +45,15 @@ under `/api/v1/tenants`. Tenant events are written to the same `outbox_events`
 table, so the Phase 2 relay publishes them (`forge.events.tenant.*`) with no
 extra wiring. Quota enforcement across modules is deferred to a later phase.
 
+## Phase 4: Application reconciler
+
+The platform's centerpiece: a developer-facing `Application` custom resource
+(zero Kubernetes fields) and a controller-runtime operator that translates it
+into a hardened Deployment and optional Service, injecting resource
+requests/limits, probes, a non-root security context, and standard labels, then
+reconciling continuously to correct drift. See `docs/reconciler.md`. Run it on a
+local `kind` cluster with `make kind-up install-crd operator sample`.
+
 ## Quickstart
 
 ```bash

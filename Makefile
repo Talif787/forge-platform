@@ -46,3 +46,29 @@ up:
 
 down:
 	docker compose down -v
+
+# --- Phase 4: reconciler ---
+ENVTEST_K8S_VERSION ?= 1.31.0
+KIND_CLUSTER ?= forge
+
+operator:
+	$(GO) run ./cmd/operator
+
+kind-up:
+	kind create cluster --name $(KIND_CLUSTER)
+
+kind-down:
+	kind delete cluster --name $(KIND_CLUSTER)
+
+install-crd:
+	kubectl apply -f config/crd/application.yaml
+
+sample:
+	kubectl apply -f config/samples/application.yaml
+
+setup-envtest:
+	$(GO) install sigs.k8s.io/controller-runtime/tools/setup-envtest@release-0.19
+	$$(go env GOPATH)/bin/setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(HOME)/.envtest -p path
+
+test-controller:
+	KUBEBUILDER_ASSETS="$$($(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(HOME)/.envtest -p path)" $(GO) test -tags=envtest -race -count=1 ./internal/controller/...
