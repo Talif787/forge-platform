@@ -18,11 +18,14 @@ import (
 	tenant "github.com/forge-platform/forge/internal/modules/tenant"
 	application "github.com/forge-platform/forge/internal/modules/application"
 	appkube "github.com/forge-platform/forge/internal/modules/application/adapters/kube"
+	provisioningmod "github.com/forge-platform/forge/internal/modules/provisioning"
+	provtemporal "github.com/forge-platform/forge/internal/modules/provisioning/adapters/temporal"
 	"github.com/forge-platform/forge/internal/platform/config"
 	"github.com/forge-platform/forge/internal/platform/httpx"
 	"github.com/forge-platform/forge/internal/platform/idempotency"
 	platformkube "github.com/forge-platform/forge/internal/platform/kube"
 	"github.com/forge-platform/forge/internal/platform/log"
+	platformtemporal "github.com/forge-platform/forge/internal/platform/temporal"
 	"github.com/forge-platform/forge/internal/platform/observability"
 	pg "github.com/forge-platform/forge/internal/platform/postgres"
 	"github.com/forge-platform/forge/migrations"
@@ -93,12 +96,22 @@ func run() error {
 		appModule = application.New(appkube.NewReader(kubeClient))
 	}
 
+	temporalClient, temporalErr := platformtemporal.BuildClient(cfg.Temporal.HostPort, cfg.Temporal.Namespace)
+	var provModule *provisioningmod.Module
+	if temporalErr != nil {
+		logger.Warn("temporal client unavailable; provisioning endpoints will return 503", "error", temporalErr.Error())
+		provModule = provisioningmod.NewDisabled()
+	} else {
+		provModule = provisioningmod.New(provtemporal.NewReader(temporalClient, cfg.Temporal.Namespace))
+	}
+
 	router.Route("/api/v1", func(r chi.Router) {
 		r.Use(httpx.Authenticate(verifier))
 		r.Use(httpx.RateLimit(cfg.RateLimit.RPS, cfg.RateLimit.Burst))
 		catalog.New(pool.Pool, idemStore).Mount(r)
 		tenant.New(pool.Pool).Mount(r)
 		appModule.Mount(r)
+		provModule.Mount(r)
 	})
 
 	server := httpx.NewServer(cfg.HTTPAddr, router)
