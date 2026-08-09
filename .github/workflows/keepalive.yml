@@ -1,0 +1,19 @@
+# Optional: pings the free API so it does not cold-start when a visitor arrives.
+# UptimeRobot (free, 5-min interval) is simpler and more reliable; this is a
+# $0 alternative using GitHub Actions. Set the repo variable API_URL to your
+# Render URL. Note: keeping a single free Render service awake ~24/7 uses close
+# to the 750 free instance-hours/month; that is within budget for one service.
+name: keepalive
+on:
+  schedule:
+    - cron: "*/12 * * * *"
+  workflow_dispatch: {}
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping readyz
+        run: |
+          URL="${{ vars.API_URL }}"
+          if [ -z "$URL" ]; then echo "set repo variable API_URL"; exit 0; fi
+          curl -fsS --max-time 60 "$URL/readyz" >/dev/null && echo "ok" || echo "wake attempt sent"

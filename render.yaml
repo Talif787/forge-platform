@@ -1,0 +1,25 @@
+# Render Blueprint: deploys the Forge control-plane API as a free web service.
+# Secrets (FORGE_AUTH_HMAC_SECRET, FORGE_DB_URL) are set in the Render dashboard,
+# not committed. See DEPLOYMENT.md.
+services:
+  - type: web
+    name: forge-api
+    runtime: docker
+    dockerfilePath: ./deploy/Dockerfile
+    plan: free
+    healthCheckPath: /readyz
+    envVars:
+      - key: FORGE_ENV
+        value: staging
+      - key: FORGE_AUTH_MODE
+        value: hmac
+      - key: FORGE_RATE_LIMIT_RPS
+        value: "50"
+      - key: FORGE_RATE_LIMIT_BURST
+        value: "100"
+      - key: FORGE_DB_MAX_CONNS
+        value: "8"
+      - key: FORGE_AUTH_HMAC_SECRET
+        sync: false
+      - key: FORGE_DB_URL
+        sync: false

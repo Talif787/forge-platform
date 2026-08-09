@@ -66,10 +66,23 @@ type RateLimit struct {
 
 func (c Config) IsProduction() bool { return c.Env == "production" }
 
+// httpAddr resolves the listen address. Explicit FORGE_HTTP_ADDR wins; otherwise
+// it honors a platform-provided PORT (Render, Cloud Run, etc.); else defaults to
+// :8080 for local use.
+func httpAddr() string {
+	if a := os.Getenv("FORGE_HTTP_ADDR"); a != "" {
+		return a
+	}
+	if p := os.Getenv("PORT"); p != "" {
+		return ":" + p
+	}
+	return ":8080"
+}
+
 func Load() (Config, error) {
 	cfg := Config{
 		Env:             getStr("FORGE_ENV", "development"),
-		HTTPAddr:        getStr("FORGE_HTTP_ADDR", ":8080"),
+		HTTPAddr:        httpAddr(),
 		ShutdownTimeout: getDur("FORGE_SHUTDOWN_TIMEOUT", 15*time.Second),
 		Database: Database{
 			URL:             getStr("FORGE_DB_URL", ""),
